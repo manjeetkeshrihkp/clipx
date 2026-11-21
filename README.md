@@ -1,3 +1,13 @@
+---
+title: ClipX Studio
+emoji: 🎬
+colorFrom: purple
+colorTo: indigo
+sdk: docker
+app_port: 8765
+pinned: false
+---
+
 # ClipX (formerly PeakCut)
 
 Turn long videos and live streams into captioned vertical clips, ready to post. Free and open source: run it on
