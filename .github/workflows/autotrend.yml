@@ -1,0 +1,103 @@
+name: ClipX Auto-Pilot (Hourly Trend & Instagram Bot)
+
+on:
+  schedule:
+    # Runs at minute 0 of every hour (24 times a day)
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      niche:
+        description: 'Trending niche (podcast, tech, gaming, motivation, finance, custom)'
+        required: false
+        default: 'podcast'
+        type: choice
+        options:
+          - podcast
+          - tech
+          - gaming
+          - motivation
+          - finance
+          - custom
+      query:
+        description: 'Custom search query (if niche is custom)'
+        required: false
+        default: ''
+        type: string
+      max_clips:
+        description: 'Maximum clips to generate'
+        required: false
+        default: '2'
+        type: string
+      min_score:
+        description: 'Minimum viral score (0-100) to keep and post'
+        required: false
+        default: '70'
+        type: string
+
+concurrency:
+  group: clipx-autotrend
+  cancel-in-progress: false
+
+jobs:
+  autotrend:
+    name: Research Trends, Clip & Post
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install System Dependencies (FFmpeg & Fonts)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-noto-cjk
+          ffmpeg -version | head -n 1
+
+      - name: Install Python Requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Cache Parakeet Speech Model
+        id: cache-speech-model
+        uses: actions/cache@v4
+        with:
+          path: data/models
+          key: speech-model-parakeet-v2
+
+      - name: Download Speech Model (if not cached)
+        if: steps.cache-speech-model.outputs.cache-hit != 'true'
+        run: |
+          python -m studio.fetch_model
+
+      - name: Run Auto-Pilot Engine
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          AUTOTREND_NICHE: ${{ inputs.niche || secrets.AUTOTREND_NICHE || 'podcast' }}
+          AUTOTREND_QUERY: ${{ inputs.query || secrets.AUTOTREND_QUERY || '' }}
+          AUTOTREND_MAX_CLIPS: ${{ inputs.max_clips || secrets.AUTOTREND_MAX_CLIPS || '2' }}
+          AUTOTREND_MIN_SCORE: ${{ inputs.min_score || secrets.AUTOTREND_MIN_SCORE || '70' }}
+          PEAKCUT_DATA: ${{ github.workspace }}/data
+        run: |
+          python tools/run_actions_autotrend.py
+
+      - name: Upload Generated Clips & Run Manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipx-generated-clips-${{ github.run_id }}
+          path: |
+            output_clips/*.mp4
+            output_clips/run_manifest.json
+          retention-days: 14
+          if-no-files-found: ignore

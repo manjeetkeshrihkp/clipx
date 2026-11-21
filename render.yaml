@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: clipx-studio
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: standard
+    envVars:
+      - key: PEAKCUT_PORT
+        value: 8765
+      - key: PEAKCUT_TRUST_PROXY
+        value: "1"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+    disk:
+      name: clipx-data
+      mountPath: /data
+      sizeGB: 20

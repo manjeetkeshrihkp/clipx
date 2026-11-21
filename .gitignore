@@ -8,6 +8,7 @@ secrets/
 *service-account*.json
 *client_secret*.json
 data/
+output_clips/
 storage.json
 *.db
 *.db-wal
