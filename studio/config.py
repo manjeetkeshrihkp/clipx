@@ -165,7 +165,10 @@ def user_dir(uid: str) -> Path:
 # ---------------------------------------------------------------- the site
 HOST = env("PEAKCUT_HOST", "127.0.0.1")
 PORT = int(env("PEAKCUT_PORT") or env("PORT") or "8765")
-PUBLIC_URL = (env("PEAKCUT_PUBLIC_URL") or f"http://127.0.0.1:{PORT}").rstrip("/")   # e.g. https://peakcut.com
+PUBLIC_URL = (env("PEAKCUT_PUBLIC_URL")
+              or env("RENDER_EXTERNAL_URL")
+              or (f"https://{env('RENDER_EXTERNAL_HOSTNAME')}" if env("RENDER_EXTERNAL_HOSTNAME") else "")
+              or f"http://127.0.0.1:{PORT}").rstrip("/")
 HTTPS = PUBLIC_URL.startswith("https://")
 SESSION_DAYS = int(env("PEAKCUT_SESSION_DAYS", "30"))
 # Accounts are off by default: PeakCut opens straight into the dashboard, with no sign-in, which is what you want
