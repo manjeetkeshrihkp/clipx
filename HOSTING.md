@@ -1,14 +1,14 @@
-# 🌐 Hosting ClipX Online with GitHub
+# 🌐 Hosting EliteX Clipper Online with GitHub
 
-This guide covers everything you need to host and run ClipX online using GitHub.
+This guide covers everything you need to host and run EliteX Clipper online using GitHub.
 
 ---
 
 ## ⚡ How Hosting Works: The 2 Core Parts
 
-ClipX requires **Python**, **FFmpeg** (for video rendering), and **AI/speech models** (~480 MB). 
+EliteX Clipper requires **Python**, **FFmpeg** (for video rendering), and **AI/speech models** (~480 MB). 
 
-Because **GitHub Pages** only serves static HTML/CSS (no Python or FFmpeg backend), GitHub handles ClipX via **GitHub Actions** and **GitHub-connected cloud platforms**:
+Because **GitHub Pages** only serves static HTML/CSS (no Python or FFmpeg backend), GitHub handles EliteX Clipper via **GitHub Actions** and **GitHub-connected cloud platforms**:
 
 | Capability | How it's hosted | Cost |
 |---|---|---|

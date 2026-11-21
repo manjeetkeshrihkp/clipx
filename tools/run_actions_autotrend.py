@@ -29,7 +29,7 @@ logger = logging.getLogger("clipx.actions")
 
 def main() -> int:
     print("=" * 60)
-    print("🚀 ClipX Headless Auto-Pilot (GitHub Actions Cloud Runner)")
+    print("🚀 EliteX Clipper Headless Auto-Pilot (GitHub Actions Cloud Runner)")
     print("=" * 60)
 
     # 1. Ensure required directories

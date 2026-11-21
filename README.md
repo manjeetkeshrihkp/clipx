@@ -1,5 +1,5 @@
 ---
-title: ClipX Studio
+title: EliteX Clipper
 emoji: 🎬
 colorFrom: purple
 colorTo: indigo
@@ -8,7 +8,7 @@ app_port: 8765
 pinned: false
 ---
 
-# ClipX (formerly PeakCut)
+# EliteX Clipper
 
 Turn long videos and live streams into captioned vertical clips, ready to post. Free and open source: run it on
 your own computer or server, with your own AI key.
@@ -16,7 +16,7 @@ your own computer or server, with your own AI key.
 > 🚀 **New:** Autonomous Hourly Trend Scout & Instagram Multi-Account Auto-Publisher (Auto-Pilot) built in!
 > 🌐 **Online Hosting:** See [HOSTING.md](HOSTING.md) to run it 24/7 on GitHub Actions and deploy online for free.
 
-Paste a YouTube, Twitch or Kick link (or upload a file) and PeakCut finds the moments worth clipping, cuts them to
+Paste a YouTube, Twitch or Kick link (or upload a file) and EliteX Clipper finds the moments worth clipping, cuts them to
 9:16, adds word-by-word captions and a hook, and can post them to your connected accounts. It can also record a
 creator's live stream and clip the highlights while the stream is still running.
 
