@@ -90,6 +90,12 @@ def enqueue(job, clip, account_ids, now=False) -> list:
 
 def on_clip_ready(job, clip):
     """Called once when a clip first finishes rendering."""
+    if job.get("autotrend"):
+        try:
+            from . import autotrend
+            autotrend.on_autotrend_clip_ready(job, clip)
+        except Exception:
+            pass
     c = creators.get(job["creator"])
     if not c or not c["autopost"] or not c["accounts"]:
         return

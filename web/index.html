@@ -1260,6 +1260,7 @@ function drawShell() {  const nav = (v, icon, label, extra = "") => `<button cla
   put($("#nav"), nav("overview", navIc("home", "overview"), "Home") +
     nav("library", navIc("film", "library"), "All videos", (() => { const w = S.jobs.filter(j => ["queued", "running"].includes(j.status)).length;
       return w ? `<span class="working" title="${w} working now"><i></i>${w} working</span>` : S.jobs.length ? `<span class="count">${S.jobs.length}</span>` : ""; })()) +
+    nav("autotrend", ic("instagram"), "Auto-Pilot (IG Bot)") +
     `<h4><span>Creators</span></h4>` +
     S.creators.map(c => nav("c:" + c.id, cav(c), c.name,
       c.live_job ? `<span class="sb-tag rec" title="Recording now"><i></i>Rec</span>`
@@ -1275,7 +1276,8 @@ function drawShell() {  const nav = (v, icon, label, extra = "") => `<button cla
       <button class="icon-btn bell" data-act="bell" title="Notifications" aria-label="Notifications${S.status.unread ? `, ${S.status.unread} new` : ""}" aria-haspopup="dialog">${ic("bell")}${S.status.unread ? `<span class="dotn">${S.status.unread > 9 ? "9+" : S.status.unread}</span>` : ""}</button></div>` : ""));
   const c = creator();
   const recording = S.creators.filter(x => x.live_job).length;
-  let title = {overview:"Home", library:"All videos", settings:"Settings", usage:"AI usage"}[S.view] || "", sub = "", act = "";
+  let title = {overview:"Home", library:"All videos", settings:"Settings", usage:"AI usage", autotrend:"Auto-Pilot (Instagram Bot)"}[S.view] || "", sub = "", act = "";
+  if (S.view === "autotrend") sub = "Hourly viral trend researcher, automatic video clipper & multi-page Instagram publisher.";
   if (S.view === "usage") sub = "What the AI has been used for.";
   if (S.view === "overview") sub = `${greeting()}. ${S.creators.length} creator${S.creators.length === 1 ? "" : "s"}${recording ? `, ${recording} recording now` : ""}.`;
   if (S.view === "library") sub = "Every video and recording, across all creators.";
@@ -1347,10 +1349,12 @@ function go(v, tab, fromHistory) {
   else if (v === "library") view.innerHTML = `<div id="add"></div><div id="jobs"></div>`;
   else if (v === "settings") view.innerHTML = `<div id="sform"></div>`;
   else if (v === "usage") { view.innerHTML = `<div id="usage"></div>`; loadUsage(); }
+  else if (v === "autotrend") { view.innerHTML = `<div id="autotrend"></div>`; loadAutoTrend(); }
   else view.innerHTML = `<div id="stream"></div><div id="cbody"></div>`;   // the live player stays put across tabs: no restart, no rebuffer
   if ($("#add")) drawAdd(v === "overview" ? "hero" : "compact");
   if (v === "overview" && window.GradientASCII) { try { window._gaStop = GradientASCII($("#appAscii"), {colors: ["#ffb27a", "#ffffff", "#ffd2ae", "#ffe0c2", "#fff1e6"], shape: "horizon", lightMode: true, cellSize: 16, density: 0.8, glyphOpacity: 0.26, gradientOpacity: 0.32, glow: 0.06, grain: 0.06, mouseInteraction: false, clickEffect: "none"}); } catch {} }
   if (v === "settings") drawSettings();
+  if (v === "autotrend") loadAutoTrend();
   if (v.startsWith("c:")) setTab(S.ctab);
   $("#main").scrollTo(0, 0); render();
   if (v === "overview") loadOverview();
@@ -2042,6 +2046,244 @@ function drawUsage() {
       ${(k.recent || []).length ? `<div class="scroll"><table><tr><th>When</th><th>What</th><th>Creator</th><th>Video</th><th class="num">Tokens</th></tr>
       ${k.recent.map(u => `<tr><td class="sub">${when(u.t)}</td><td>${esc(u.purpose)}</td><td>${esc(u.creator_name || "None")}</td><td class="sub">${esc(u.where || "")}</td><td class="num">${(u.tokens || 0).toLocaleString()}</td></tr>`).join("")}</table></div>`
       : `<p class="help">No AI calls yet.</p>`}</div>`;
+}
+
+/* ============================================================ Auto-Pilot & Instagram Bot */
+async function loadAutoTrend() {
+  try {
+    S.autotrend = await api("/api/autotrend");
+  } catch (err) {
+    toast("Failed to load Auto-Pilot data", "bad");
+    return;
+  }
+  drawAutoTrend();
+}
+
+function drawAutoTrend() {
+  const at = S.autotrend, box = $("#autotrend");
+  if (!at || !box) return;
+  const cfg = at.settings || {}, hist = at.history || {}, igs = at.instagram_accounts || [];
+  const enabled = !!cfg.enabled;
+  const runs = hist.runs || [];
+  const nextMin = cfg.next_run ? Math.max(0, Math.round((cfg.next_run - Date.now() / 1000) / 60)) : 0;
+
+  box.innerHTML = `
+    <div class="tiles four" style="margin-top:10px">
+      <div class="tile">
+        <i>${ic(enabled ? "check" : "pause")}</i>
+        <b style="color:${enabled ? "var(--good)" : "var(--dim)"}">${enabled ? "Active (Running)" : "Paused"}</b>
+        <span>${cfg.status_message || "Auto-pilot status"}</span>
+      </div>
+      <div class="tile">
+        <i>${ic("clock")}</i>
+        <b>${enabled ? (nextMin > 0 ? `${nextMin} mins` : "Due now") : "Paused"}</b>
+        <span>Next Research &amp; Clip Run</span>
+      </div>
+      <div class="tile">
+        <i>${ic("instagram")}</i>
+        <b>${igs.length} Connected</b>
+        <span>Instagram Business Pages</span>
+      </div>
+      <div class="tile">
+        <i>${ic("scissors")}</i>
+        <b>${runs.length} Cycles</b>
+        <span>Trend Runs Logged</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-head">
+        <div>
+          <h2>Auto-Pilot Configuration</h2>
+          <p class="sub">Hourly automated viral video research and multi-page Instagram Reels publisher.</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn primary" id="btnRunTrendNow" onclick="runTrendNow()">${ic("play")}Run Cycle Now</button>
+        </div>
+      </div>
+      
+      <form id="atForm" onsubmit="saveAutoTrend(event)" style="display:grid;gap:16px;padding:8px 0">
+        <div class="row" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--muted);border-radius:12px">
+          <div>
+            <b style="font-size:15px">Enable 24/7 Hourly Auto-Pilot</b>
+            <p class="sub">Researches top trending viral videos, clips highlights with animated captions, and posts Reels automatically.</p>
+          </div>
+          <label class="sw">
+            <input type="checkbox" id="at_enabled" ${enabled ? "checked" : ""}>
+            <span></span>
+          </label>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label class="lbl"><b>Trend Niche / Search Strategy</b></label>
+            <select id="at_niche" class="inp" onchange="toggleAutoNiche(this.value)">
+              <option value="podcast" ${cfg.niche === "podcast" ? "selected" : ""}>🎙️ Podcasts &amp; Long-form Interviews (Lex, Huberman, Rogan)</option>
+              <option value="tech" ${cfg.niche === "tech" ? "selected" : ""}>💻 Tech, AI &amp; Startups (OpenAI, Gemini, NVidia, Apple)</option>
+              <option value="gaming" ${cfg.niche === "gaming" ? "selected" : ""}>🎮 Gaming Highlights &amp; Stream Fails/Clutches (GTA, Fortnite, Valorant)</option>
+              <option value="motivation" ${cfg.niche === "motivation" ? "selected" : ""}>🔥 Motivation, Success &amp; Business Advice</option>
+              <option value="finance" ${cfg.niche === "finance" ? "selected" : ""}>📈 Finance, Investing &amp; Crypto</option>
+              <option value="custom" ${cfg.niche === "custom" ? "selected" : ""}>🔍 Custom YouTube Search Query</option>
+              <option value="channels" ${cfg.niche === "channels" ? "selected" : ""}>📺 Track Specific YouTube Channels</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl"><b>Research Interval</b></label>
+            <select id="at_interval" class="inp">
+              <option value="0.5" ${cfg.interval_hours === 0.5 ? "selected" : ""}>Every 30 Minutes</option>
+              <option value="1.0" ${cfg.interval_hours === 1.0 ? "selected" : ""}>Every 1 Hour (Recommended)</option>
+              <option value="2.0" ${cfg.interval_hours === 2.0 ? "selected" : ""}>Every 2 Hours</option>
+              <option value="4.0" ${cfg.interval_hours === 4.0 ? "selected" : ""}>Every 4 Hours</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="at_custom_wrap" style="display:${cfg.niche === "custom" ? "block" : "none"}">
+          <label class="lbl"><b>Custom YouTube Search Keyword</b></label>
+          <input type="text" id="at_query" class="inp" placeholder="e.g. viral ai breakdown podcast 2026" value="${esc(cfg.custom_query || "")}">
+        </div>
+
+        <div id="at_channels_wrap" style="display:${cfg.niche === "channels" ? "block" : "none"}">
+          <label class="lbl"><b>Monitored YouTube Channel URLs (one per line)</b></label>
+          <textarea id="at_channels" class="inp" rows="3" placeholder="https://www.youtube.com/@HubermanLab/videos&#10;https://www.youtube.com/@lexfridman/videos">${esc((cfg.channels || []).join("\n"))}</textarea>
+        </div>
+
+        <div style="border-top:1px solid var(--line);padding-top:16px">
+          <label class="lbl"><b>Select Destination Instagram Business Pages</b></label>
+          <p class="sub" style="margin-bottom:8px">Clips from each trending video will be distributed across these connected pages.</p>
+          ${igs.length === 0 ? `
+            <div class="note" style="background:#FFF8E7;color:#8A5300;padding:14px;border-radius:10px;font-size:13px">
+              ${ic("warn")} No Instagram Business accounts connected yet. Go to <a href="#settings" onclick="go('settings'); S.stab='apps'; drawSettings();" style="color:inherit;font-weight:600;text-decoration:underline">Settings → Connected apps</a> to connect your Instagram accounts, or add them via Meta Graph API tokens.
+            </div>
+          ` : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:10px">
+              ${igs.map(acc => {
+                const checked = (cfg.target_accounts || []).length === 0 || (cfg.target_accounts || []).includes(acc.id);
+                return `
+                  <label style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--muted);border-radius:10px;cursor:pointer">
+                    <input type="checkbox" name="at_ig_acc" value="${esc(acc.id)}" ${checked ? "checked" : ""}>
+                    <span>
+                      <b style="display:block;font-size:14px">${esc(acc.name)}</b>
+                      <small style="color:var(--dim)">${esc(acc.detail || "Instagram Business Page")}</small>
+                    </span>
+                  </label>
+                `;
+              }).join("")}
+            </div>
+          `}
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;border-top:1px solid var(--line);padding-top:16px">
+          <div>
+            <label class="lbl"><b>Clips to Cut per Video</b></label>
+            <input type="number" id="at_maxclips" class="inp" min="1" max="6" value="${cfg.max_clips || 3}">
+          </div>
+          <div>
+            <label class="lbl"><b>Minimum Viral Score (0-100)</b></label>
+            <input type="number" id="at_minscore" class="inp" min="50" max="95" value="${cfg.min_score || 75}">
+          </div>
+          <div>
+            <label class="lbl"><b>Post Spacing Strategy</b></label>
+            <select id="at_postmode" class="inp">
+              <option value="queue" ${cfg.post_mode === "queue" ? "selected" : ""}>Queue (Staggered 45-60 min gap)</option>
+              <option value="now" ${cfg.post_mode === "now" ? "selected" : ""}>Post Immediately as Ready</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button type="submit" class="btn primary" id="btnSaveAutoTrend">${ic("check")}Save Auto-Pilot Settings</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-head">
+        <div>
+          <h2>Research &amp; Publishing Activity Log</h2>
+          <p class="sub">Recent trending videos discovered, clipped, and queued for Instagram.</p>
+        </div>
+      </div>
+      ${runs.length === 0 ? `
+        <p class="help">No auto-pilot cycles executed yet. Toggle "Enable" above or click "Run Cycle Now" to test.</p>
+      ` : `
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Discovered Trending Video</th>
+                <th>ClipX Job</th>
+                <th>Status</th>
+                <th>Destination Pages</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${runs.map(r => `
+                <tr>
+                  <td class="sub">${when(r.timestamp)}</td>
+                  <td><b>${esc(r.title || "Discovered Video")}</b><br><small><a href="${esc(r.url || "")}" target="_blank" rel="noopener">${esc(r.url || "")}</a></small></td>
+                  <td>${r.job_id ? `<a href="#library" onclick="go('library')" style="font-family:monospace;font-weight:600">${esc(r.job_id)}</a>` : "-"}</td>
+                  <td><span class="chip ${r.status === 'queued' ? 'primary' : ''}">${esc(r.status || "done")}</span></td>
+                  <td class="sub">${(r.target_accounts || []).length} page(s)</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function toggleAutoNiche(niche) {
+  const c = $("#at_custom_wrap"), ch = $("#at_channels_wrap");
+  if (c) c.style.display = niche === "custom" ? "block" : "none";
+  if (ch) ch.style.display = niche === "channels" ? "block" : "none";
+}
+
+async function saveAutoTrend(e) {
+  e.preventDefault();
+  const selectedIgs = Array.from(document.querySelectorAll('input[name="at_ig_acc"]:checked')).map(cb => cb.value);
+  const data = {
+    enabled: $("#at_enabled").checked,
+    niche: $("#at_niche").value,
+    interval_hours: parseFloat($("#at_interval").value) || 1.0,
+    custom_query: ($("#at_query")?.value || "").trim(),
+    channels: ($("#at_channels")?.value || "").split("\n").map(s => s.trim()).filter(Boolean),
+    max_clips: parseInt($("#at_maxclips").value) || 3,
+    min_score: parseInt($("#at_minscore").value) || 75,
+    post_mode: $("#at_postmode").value,
+    target_accounts: selectedIgs,
+  };
+  try {
+    const res = await send("/api/autotrend", data, "POST");
+    S.autotrend.settings = res;
+    toast("Auto-Pilot settings saved!", "ok");
+    loadAutoTrend();
+  } catch (err) {
+    toast("Error saving settings: " + err.message, "bad");
+  }
+}
+
+async function runTrendNow() {
+  const btn = $("#btnRunTrendNow");
+  if (btn) btn.disabled = true;
+  toast("Searching trends and creating video clipping job...", "ok");
+  try {
+    const res = await send("/api/autotrend/run", {}, "POST");
+    if (res.status === "no_candidate") {
+      toast("No new candidate video found.", "warn");
+    } else {
+      toast("Job started for: " + (res.title || "Trending video"), "ok");
+    }
+    await loadAutoTrend();
+    await tick();
+  } catch (err) {
+    toast("Run failed: " + err.message, "bad");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 /* ============================================================ settings */

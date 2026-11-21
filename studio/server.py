@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 
 from . import admin as admins
 from . import account, load
-from . import (accounts, ai, alerts, auth, brain, config, creators, ctx, db, jobs, live, media, posting,
+from . import (accounts, ai, alerts, auth, autotrend, brain, config, creators, ctx, db, jobs, live, media, posting,
                profiles, render, safe, transcribe, usage)
 
 from . import tools as _tools  # noqa: E402
@@ -74,6 +74,7 @@ def _startup():
     jobs.start()
     live.start()
     posting.start()
+    autotrend.start()
     from . import updates
     updates.start()                  # looks for a newer PeakCut every minute, in the background
 
@@ -1475,6 +1476,32 @@ def list_accounts():
 def remove_account(aid: str):
     accounts.remove(aid)
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- Auto-Trend Autonomous Researcher & Publisher
+@app.get("/api/autotrend")
+def get_autotrend():
+    from . import autotrend
+    all_accounts = accounts.list_accounts()
+    ig_accounts = [a for a in all_accounts if a.get("platform") == "instagram"]
+    return {
+        "settings": autotrend.get_settings(),
+        "history": autotrend.get_history(),
+        "instagram_accounts": ig_accounts,
+    }
+
+
+@app.post("/api/autotrend")
+def update_autotrend(data: dict = Body(...)):
+    from . import autotrend
+    return autotrend.save_settings(data)
+
+
+@app.post("/api/autotrend/run")
+def trigger_autotrend():
+    from . import autotrend
+    res = autotrend.run_cycle(manual=True)
+    return res
 
 
 # ---------------------------------------------------------------- connecting YouTube, Instagram and TikTok
